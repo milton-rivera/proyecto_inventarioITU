@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventario-backend
+  namespace: inventario-itu
+  labels:
+    app: inventario-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventario-backend
+  template:
+    metadata:
+      labels:
+        app: inventario-backend
+    spec:
+      containers:
+      - name: wildfly-backend
+        image: fuanis-inventario-backend:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http-backend
+        env:
+        # Inyección desde el ConfigMap
+        - name: LDAP_URL
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: LDAP_PROVIDER_URL
+        - name: SQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: SQL_SERVER_HOST
+        - name: MONGO_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: backend-config
+              key: MONGO_HOST
+        # Inyección desde el Secret
+        - name: SQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: SQL_SERVER_USER
+        - name: SQL_PASS
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: SQL_SERVER_PASS

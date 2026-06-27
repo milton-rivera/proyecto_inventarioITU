@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------
+  # Capa de Presentación (Nginx)
+  # ---------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    networks:
+      - inventario-network
+    depends_on:
+      - backend
+
+  # ---------------------------------------------------------
+  # Capa Lógica y Orquestación (Java EE / WildFly)
+  # ---------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - LDAP_URL=ldap://192.168.10.10:389
+      # APUNTA A TU MÁQUINA VIRTUAL EXTERNA A TRAVÉS DEL PFSENSE
+      - SQL_HOST=192.168.10.20
+      - SQL_USER=sa
+      - SQL_PASS=TuClaveSeguraSQL123
+      - MONGO_HOST=mongodb
+    networks:
+      - inventario-network
+    depends_on:
+      - mongodb
+
+  # ---------------------------------------------------------
+  # Capa de Persistencia Flexible (MongoDB)
+  # ---------------------------------------------------------
+  mongodb:
+    build:
+      context: ./databases/mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - inventario-network
+
+# Definición de la red virtual privada local
+networks:
+  inventario-network:
+    driver: bridge
+
+# Definición de volúmenes para persistencia de datos local
+volumes:
+  mongo-data:
