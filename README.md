@@ -138,23 +138,25 @@ La aplicación web delega la validación de identidad al Active Directory instit
 
 ---
 
+
 ## 🖥️ Topología y Configuración de Máquinas Virtuales (VMs)
 
-Para replicar el entorno o auditar la seguridad perimetral, a continuación se detallan las configuraciones de red asignadas a cada nodo de la arquitectura. El tráfico inter-redes es gestionado exclusivamente por el enrutador virtual.
+La red está segmentada mediante **pfSense 2.8.1-RELEASE**[cite: 1], garantizando el aislamiento de servicios. A continuación se detallan las interfaces configuradas según **image_8b51dc.png**:
 
-### 🌐 Segmentación de Redes (Subnets)
-*   **LAN 1 (Desarrollo / Cloud Native):** `192.168.1.0/24` - Aloja el nodo de Ubuntu (Minikube y Docker).
-*   **LAN 2 (Servidores Core / On-Premises):** `192.168.10.0/24` - Aloja los servicios institucionales críticos de Windows Server.
+### 🌐 Segmentación de Redes (Interfaces pfSense)
+*   **WAN (wan):** `192.168.1.11/24`[cite: 1]
+*   **SERVER (lan):** `192.168.10.1/24`[cite: 1]
+*   **CLIENT (opt1):** `192.168.2.254/24`[cite: 1]
 
-### ⚙️ Detalle de Nodos y Servicios Externos
+### ⚙️ Detalle de Nodos
+| Servidor / Máquina Virtual | Rol | Dirección IP |
+| :--- | :--- | :--- |
+| **pfSense (Router)** | Puerta de Enlace | `192.168.1.11` (WAN) / `192.168.10.1` (LAN) |
+| **VM 1: Windows Server (AD)** | Controlador de Dominio | `192.168.10.10` |
+| **VM 2: Windows Server (SQL)** | Motor Relacional | `192.168.10.20` |
+| **Nodo Ubuntu (Minikube)** | Orquestador | `192.168.1.x` (Segmento WAN) |
 
-| Servidor / Máquina Virtual | Rol Principal | Dirección IP | Puerto | Regla de Firewall (pfSense) |
-| :--- | :--- | :--- | :--- | :--- |
-| **pfSense (Router)** | Puerta de Enlace / Firewall | `192.168.1.1` / `192.168.10.1` | N/A | Permite tráfico cruzado TCP desde LAN 1 hacia LAN 2. |
-| **VM 1: Windows Server (AD)** | Controlador de Dominio (LDAP) | `192.168.10.10` | `389` | Tráfico entrante permitido desde `192.168.1.x` para validación de usuarios. |
-| **VM 2: Windows Server (SQL)** | Motor Relacional Estructurado | `192.168.10.20` | `1433` | Tráfico entrante permitido desde `192.168.1.x` para transacciones JDBC. |
-
-### 🛠️ Verificación de Conectividad (Peticiones)
-El proyecto demuestra una correcta resolución de peticiones de red cruzadas mediante las siguientes interacciones:
-1.  **Handshake LDAP:** Cuando un cliente envía el formulario de login, el pod de WildFly (`192.168.1.x`) resuelve la petición contra el servicio AD (`192.168.10.10:389`), validando credenciales y extrayendo el atributo `memberOf` para inyectar los roles en sesión.
-2.  **Transacciones SQL (JDBC):** En las operaciones de Alta y Consulta, el microservicio establece un socket TCP directo a través del pfSense contra la base de datos `ubicacion_db` (`192.168.10.20:1433`).
+### 🛠️ Verificación de Conectividad
+El proyecto garantiza el flujo de datos mediante peticiones cruzadas:
+1. **Handshake LDAP:** El pod en `192.168.1.x` autentica contra `192.168.10.10` vía puerto `389`.
+2. **Transacciones SQL:** El microservicio en Kubernetes realiza consultas JDBC hacia `192.168.10.20:1433`.
