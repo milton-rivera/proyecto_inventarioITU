@@ -1,6 +1,6 @@
 Markdown
 
-# Sistema Centralizado de Gestión de Cómputo Híbrido 🚀
+# Sistema INVENTARIO ITU 🚀
 
 Este proyecto implementa una arquitectura empresarial híbrida y distribuida de tres capas (Multi-tier) para la gestión unificada de inventario de hardware y ubicación de activos informáticos. Combina el paradigma de microservicios contenerizados y orquestados nativos de la nube con servicios de infraestructura tradicionales alojados en servidores perimetrales locales (On-Premises).
 
