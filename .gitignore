@@ -1,0 +1,6 @@
+# Carpetas y archivos a ignorar
+*.class
+*.jar
+.DS_Store
+target/
+.metadata/
