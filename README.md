@@ -50,6 +50,8 @@ La solución está diseñada para operar de forma segura interconectando múltip
 │   (itu.local)    │      │   (ubicacion_db) │
 └──────────────────┘      └──────────────────┘
 
+```
+
 🛠️ Tecnologías y Herramientas Utilizadas
 
     Runtime Backend: Java Server Pages (JSP) ejecutado sobre un servidor de aplicaciones corporativo JBoss WildFly.
@@ -66,8 +68,8 @@ La solución está diseñada para operar de forma segura interconectando múltip
 
     Contenerización: Docker para la creación de imágenes inmutables de la capa lógica.
 
+```text
 📁 Estructura del Repositorio
-Plaintext
 
 proyecto_inventarioITU/
 ├── ROOT.war/                     # Directorio de la aplicación web (Exploded War)
@@ -86,21 +88,21 @@ proyecto_inventarioITU/
 ├── politicas-red.yaml            # Manifiestos de seguridad de red (Network Policies)
 └── README.md                     # Documentación principal del sistema
 
+```
+
+```
 🚀 Guía de Despliegue en Kubernetes
 
 Siga este orden estricto para garantizar que los microservicios se enlacen correctamente:
 1. Iniciar el Clúster Local
-Bash
 
-minikube start
+minikube start --cni=calico
 
 2. Desplegar MongoDB con Almacenamiento Persistente
-Bash
 
 kubectl apply -f mongo-db.yaml
 
 3. Construir la Imagen Inmutable de la Aplicación Web
-Bash
 
 # Apuntar la terminal al Docker de Minikube
 eval $(minikube docker-env)
@@ -109,11 +111,11 @@ eval $(minikube docker-env)
 docker build -t fuanis-inventario:v1 .
 
 4. Desplegar el Backend Java EE y Políticas de Red
-Bash
 
 kubectl apply -f inventario-web-permanente.yaml
 kubectl apply -f politicas-red.yaml
 
+```
 🔒 Detalles de Seguridad Implementados
 1. Principio de Menor Privilegio en Microservicios
 
@@ -126,27 +128,18 @@ Por defecto, las redes de Kubernetes permiten que todos los pods se comuniquen e
 2. Control de Acceso Basado en Roles (RBAC) dinámico por LDAP
 
 La aplicación web delega la validación de identidad al Active Directory institucional. El backend procesa dinámicamente el atributo de objeto memberOf. Si la cadena contiene la firma del grupo privilegiado, la interfaz habilita operaciones de escritura; en caso contrario, restringe el acceso a modo de Solo Lectura.
-👥 Equipo de Desarrollo
-
-    Milton Rivera 
-
-    Luciano Papagni 
-
-    Angelo Navarro
-
-
 
 ---
 
 
 ## 🖥️ Topología y Configuración de Máquinas Virtuales (VMs)
 
-La red está segmentada mediante **pfSense 2.8.1-RELEASE**[cite: 1], garantizando el aislamiento de servicios. A continuación se detallan las interfaces configuradas según **image_8b51dc.png**:
+La red está segmentada mediante **pfSense 2.8.1-RELEASE**, garantizando el aislamiento de servicios.
 
 ### 🌐 Segmentación de Redes (Interfaces pfSense)
-*   **WAN (wan):** `192.168.1.11/24`[cite: 1]
-*   **SERVER (lan):** `192.168.10.1/24`[cite: 1]
-*   **CLIENT (opt1):** `192.168.2.254/24`[cite: 1]
+*   **WAN (wan):** `192.168.1.11/24`
+*   **SERVER (lan):** `192.168.10.1/24`
+*   **CLIENT (opt1):** `192.168.2.254/24`
 
 ### ⚙️ Detalle de Nodos
 | Servidor / Máquina Virtual | Rol | Dirección IP |
@@ -160,3 +153,13 @@ La red está segmentada mediante **pfSense 2.8.1-RELEASE**[cite: 1], garantizand
 El proyecto garantiza el flujo de datos mediante peticiones cruzadas:
 1. **Handshake LDAP:** El pod en `192.168.1.x` autentica contra `192.168.10.10` vía puerto `389`.
 2. **Transacciones SQL:** El microservicio en Kubernetes realiza consultas JDBC hacia `192.168.10.20:1433`.
+
+----
+👥 Equipo de Desarrollo
+
+    Milton Rivera 
+
+    Luciano Papagni 
+
+    Angelo Navarro
+
