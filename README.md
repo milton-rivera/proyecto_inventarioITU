@@ -1,4 +1,3 @@
-Markdown
 
 # Sistema INVENTARIO ITU 🚀
 
