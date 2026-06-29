@@ -23,7 +23,7 @@ spec:
         - containerPort: 8080
           name: http-backend
         env:
-        # Inyección desde el ConfigMap
+        # ConfigMap
         - name: LDAP_URL
           valueFrom:
             configMapKeyRef:
@@ -39,7 +39,7 @@ spec:
             configMapKeyRef:
               name: backend-config
               key: MONGO_HOST
-        # Inyección desde el Secret
+        # Secret
         - name: SQL_USER
           valueFrom:
             secretKeyRef:

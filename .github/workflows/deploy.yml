@@ -1,0 +1,125 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  NAMESPACE: inventario-itu
+  REGISTRY: ghcr.io
+
+jobs:
+  deploy-core:
+    name: Core — desplegar cluster sin datos
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase repository name (GHCR exige minúsculas)
+        run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Variables de imagen
+        run: |
+          echo "IMAGE_WEB=${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/inventario-frontend:${{ github.sha }}" >> "$GITHUB_ENV"
+          echo "IMAGE_BACKEND=${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/inventario-backend:${{ github.sha }}" >> "$GITHUB_ENV"
+
+      - name: Login en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build y push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE_WEB }}
+            ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/inventario-frontend:latest
+
+      - name: Build y push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE_BACKEND }}
+            ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/inventario-backend:latest
+
+      - name: Secret para pull de GHCR
+        run: |
+          kubectl create secret docker-registry ghcr-credentials \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="${{ secrets.GITHUB_TOKEN }}" \
+            --namespace="${{ env.NAMESPACE }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Namespace
+        run: kubectl apply -f k8s/namespace/inventario-namespace.yaml
+
+      - name: MongoDB (Almacenamiento y motor)
+        run: |
+          kubectl apply -f k8s/databases/mongo-pvc.yaml
+          kubectl apply -f k8s/databases/mongo-service.yaml
+          kubectl apply -f k8s/databases/mongo-deployment.yaml
+
+      - name: Generar Secret del Backend desde GitHub Secrets
+        run: |
+          kubectl create secret generic backend-secrets \
+            --namespace="${{ env.NAMESPACE }}" \
+            --dry-run=client -o yaml \
+            --from-literal=SQL_SERVER_USER="${{ secrets.SQL_USER }}" \
+            --from-literal=SQL_SERVER_PASS="${{ secrets.SQL_PASSWORD }}" \
+            | kubectl apply -f -
+
+      - name: Backend
+        run: |
+          kubectl apply -f k8s/backend/configmap.yaml
+          kubectl apply -f k8s/backend/service.yaml
+          kubectl apply -f k8s/backend/deployment.yaml
+
+      - name: Frontend
+        run: |
+          kubectl apply -f k8s/frontend/service.yaml
+          kubectl apply -f k8s/frontend/deployment.yaml
+
+      - name: Network Policies
+        run: |
+          kubectl apply -f k8s/network-policies/allow-dns.yaml
+          kubectl apply -f k8s/network-policies/politicas-red.yaml
+
+      - name: Actualizar imágenes en tiempo de ejecución
+        run: |
+          kubectl set image deployment/inventario-frontend \
+            nginx-frontend="${{ env.IMAGE_WEB }}" \
+            -n "${{ env.NAMESPACE }}"
+          kubectl set image deployment/inventario-backend \
+            wildfly-backend="${{ env.IMAGE_BACKEND }}" \
+            -n "${{ env.NAMESPACE }}"
+
+      - name: Esperar rollouts (mongo → backend → frontend)
+        run: |
+          kubectl rollout status deployment/inventario-db -n "${{ env.NAMESPACE }}" --timeout=120s
+          kubectl rollout status deployment/inventario-backend -n "${{ env.NAMESPACE }}" --timeout=180s
+          kubectl rollout status deployment/inventario-frontend -n "${{ env.NAMESPACE }}" --timeout=120s
+
+      - name: Smoke test (Verificar Nginx)
+        run: |
+          sleep 5
+          POD=$(kubectl get pod -l app=inventario-frontend -n "${{ env.NAMESPACE }}" -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec "$POD" -n "${{ env.NAMESPACE }}" -- sh -c "
+            curl -s http://localhost:80 | grep -q 'Inventario Centralizado' && echo 'SMOKE OK' || (echo 'SMOKE FAILED' && exit 1)
+          "
+
+      - name: Resumen core
+        run: |
+          echo "✅ Core desplegado en namespace ${{ env.NAMESPACE }}"
+          kubectl get pods,svc,networkpolicies -n "${{ env.NAMESPACE }}"

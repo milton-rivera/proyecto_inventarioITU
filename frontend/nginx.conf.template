@@ -1,0 +1,11 @@
+server {
+    listen 80;
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+    }
+    # Redirigir peticiones JSP al backend de forma dinámica
+    location ~ \.jsp$ {
+        proxy_pass ${BACKEND_URL};
+    }
+}
