@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  docker-build-check:
+    name: Validar compilación de contenedores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar Build Frontend (Nginx)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          tags: test-inventario-web:latest
+
+      - name: Validar Build Backend (JBoss/JSP)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: test-inventario-backend:latest

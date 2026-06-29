@@ -22,3 +22,7 @@ spec:
         ports:
         - containerPort: 80
           name: http-frontend
+        env:
+        
+        - name: BACKEND_URL
+          value: "http://backend-service.inventario-itu.svc.cluster.local:8080"

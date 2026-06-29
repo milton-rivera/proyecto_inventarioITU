@@ -4,11 +4,14 @@ services:
   # ---------------------------------------------------------
   # Capa de Presentación (Nginx)
   # ---------------------------------------------------------
-  frontend:
+frontend:
     build:
       context: ./frontend
     ports:
       - "80:80"
+    environment:
+      
+      - BACKEND_URL=http://backend:8080
     networks:
       - inventario-network
     depends_on:
@@ -47,11 +50,11 @@ services:
     networks:
       - inventario-network
 
-# Definición de la red virtual privada local
+
 networks:
   inventario-network:
     driver: bridge
 
-# Definición de volúmenes para persistencia de datos local
+
 volumes:
   mongo-data:
